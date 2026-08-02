@@ -13,11 +13,11 @@ function App() {
     addBranch,
     addMessage,
     checkoutBranch,
+    checkoutConversation,
     getHistory,
   } = useGraphEngine();
 
   const currentMessages = getHistory();
-
   return (
     <div style={{ display: "flex", flex: 1, height: "100%", width: "100%" }}>
       <ConversationList
@@ -25,6 +25,8 @@ function App() {
         branches={branches}
         activeBranchId={activeBranchId}
         activeConversationId={activeConversationId}
+        checkoutBranch={checkoutBranch}
+        checkoutConversation={checkoutConversation}
       />
       <div style={{ display: "flex", flexDirection: "column", flex: 2 }}>
         <Chat messages={currentMessages} />

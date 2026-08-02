@@ -121,6 +121,15 @@ export const useGraphEngine = () => {
     });
   };
 
+  const checkoutConversation = (id: string) => {
+    const conversation = conversations[id];
+    if (!conversation) {
+      throw new Error("Conversation doesn't exist");
+    }
+    setActiveConversationId(id);
+    setActiveBranchId(conversation.branch);
+  };
+
   const getHistory = () => {
     const currentBranch = getCurrentBranch();
     // if (!currentBranch) {
@@ -148,6 +157,7 @@ export const useGraphEngine = () => {
     addConversation,
     addBranch,
     checkoutBranch,
+    checkoutConversation,
     addMessage,
     getHistory,
     conversations,

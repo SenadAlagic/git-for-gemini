@@ -1,19 +1,30 @@
-import type { Branch, Conversation } from "../useGraphEngine";
+import type { useGraphEngine } from "../useGraphEngine";
 import { ListEntry } from "./ListEntry";
 
-export type ConversationListProps = {
-  conversations: Record<string, Conversation>;
-  branches: Record<string, Branch>;
-  activeConversationId: string;
-  activeBranchId: string;
-};
+type GraphEngineType = ReturnType<typeof useGraphEngine>;
+
+export type ConversationListProps = Pick<
+  GraphEngineType,
+  | "conversations"
+  | "branches"
+  | "activeConversationId"
+  | "activeBranchId"
+  | "checkoutBranch"
+  | "checkoutConversation"
+>;
 
 export const ConversationList = ({
   conversations,
   branches,
   activeConversationId,
   activeBranchId,
+  checkoutBranch,
+  checkoutConversation,
 }: ConversationListProps) => {
+  const filteredBranches = Object.entries(branches).filter(
+    ([, branch]) => branch.conversationId === activeConversationId,
+  );
+
   return (
     <div
       style={{
@@ -32,20 +43,20 @@ export const ConversationList = ({
             isActive={activeConversationId === id}
             name={conversation.name}
             onClick={() => {
-              console.log(conversation.name);
+              checkoutConversation(conversation.id);
             }}
           />
         ))}
       </div>
       <div style={{ marginBottom: 20 }}>
         <div style={{ marginBottom: 8 }}>Branches</div>
-        {Object.entries(branches).map(([id, branch]) => (
+        {filteredBranches.map(([id, branch]) => (
           <ListEntry
             key={id}
             isActive={activeBranchId === id}
             name={branch.name}
             onClick={() => {
-              console.log(branch.name);
+              checkoutBranch(branch.name);
             }}
           />
         ))}
