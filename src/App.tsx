@@ -1,29 +1,45 @@
-import reactLogo from "./assets/react.svg";
-import viteLogo from "./assets/vite.svg";
-import heroImg from "./assets/hero.png";
-import "./App.css";
-import { playgroundTest } from "./graphEngine";
-import React from "react";
+import { ConversationList } from "./components/ConversationList";
+import { InputSection } from "./components/InputSection";
+import { Chat } from "./components";
+import { useGraphEngine } from "./useGraphEngine";
 
 function App() {
-  const ref = React.useRef<boolean>(false);
-  React.useEffect(() => {
-    if (ref.current) {
-      return;
-    }
-    console.clear(); // Cleans up the console on fast-refreshes
-    playgroundTest();
-    ref.current = true;
-  }, []);
+  const {
+    conversations,
+    branches,
+    activeBranchId,
+    activeConversationId,
+    addConversation,
+    addBranch,
+    addMessage,
+    checkoutBranch,
+    getHistory,
+  } = useGraphEngine();
+
+  const currentMessages = getHistory();
 
   return (
-    <section id="center">
-      <div className="hero">
-        <img src={heroImg} className="base" width="170" height="179" alt="" />
-        <img src={reactLogo} className="framework" alt="React logo" />
-        <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div style={{ display: "flex", flex: 1, height: "100%", width: "100%" }}>
+      <ConversationList
+        conversations={conversations}
+        branches={branches}
+        activeBranchId={activeBranchId}
+        activeConversationId={activeConversationId}
+      />
+      <div style={{ display: "flex", flexDirection: "column", flex: 2 }}>
+        <Chat messages={currentMessages} />
+        <InputSection
+          addConversation={addConversation}
+          addBranch={addBranch}
+          addMessage={addMessage}
+          checkoutBranch={checkoutBranch}
+          getHistory={getHistory}
+          activeConversationId={activeConversationId}
+          activeBranchId={activeBranchId}
+          branches={branches}
+        />
       </div>
-    </section>
+    </div>
   );
 }
 
