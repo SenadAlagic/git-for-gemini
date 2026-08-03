@@ -17,6 +17,12 @@ export type Commit = {
   id: string;
   parent?: string;
   text: string;
+  role: "user" | "model";
+};
+
+export type GeminiMessage = {
+  text: string;
+  role: "user" | "model";
 };
 
 export const useGraphEngine = () => {
@@ -28,6 +34,12 @@ export const useGraphEngine = () => {
   const [activeConversationId, setActiveConversationId] =
     React.useState<string>("");
   const [activeBranchId, setActiveBranchId] = React.useState<string>("");
+  const headCommitRef = React.useRef<string | undefined>(undefined);
+
+  React.useEffect(() => {
+    const currentBranch = branches[activeBranchId];
+    headCommitRef.current = currentBranch?.head;
+  }, [activeBranchId, branches]);
 
   const addConversation = (name: string) => {
     const conversationId = crypto.randomUUID();
@@ -67,13 +79,17 @@ export const useGraphEngine = () => {
     return branch;
   };
 
-  const addMessage = (text: string) => {
+  const addMessage = (text: string, role: "user" | "model" = "user") => {
     const currentBranch = branches[activeBranchId];
     if (!currentBranch) throw new Error("No active branch");
+
+    const commitId = crypto.randomUUID();
+    const parentId = headCommitRef.current;
     const commit: Commit = {
-      id: crypto.randomUUID(),
+      id: commitId,
       text,
-      parent: currentBranch.head,
+      parent: parentId,
+      role,
     };
     setMessages((prevMessages) => {
       return { ...prevMessages, [commit.id]: commit };
@@ -87,6 +103,7 @@ export const useGraphEngine = () => {
         },
       };
     });
+    headCommitRef.current = commitId;
   };
 
   const getCurrentBranch = () => {
@@ -132,21 +149,18 @@ export const useGraphEngine = () => {
 
   const getHistory = () => {
     const currentBranch = getCurrentBranch();
-    // if (!currentBranch) {
-    //   throw new Error("Current branch doesn't exist");
-    // }
-    // if (!currentBranch.head) {
-    //   throw new Error("Current branch doesn't have a HEAD commit");
-    // }
 
     if (!currentBranch || !currentBranch.head) return [];
-    const messageArray: string[] = [];
+    const messageArray: GeminiMessage[] = [];
     let commitId: string | undefined = currentBranch.head;
 
     while (commitId) {
       const workingCommit: Commit = messages[commitId];
       if (!workingCommit) break;
-      messageArray.push(workingCommit.text);
+      messageArray.push({
+        text: workingCommit.text,
+        role: workingCommit.role,
+      });
       commitId = workingCommit.parent;
     }
 

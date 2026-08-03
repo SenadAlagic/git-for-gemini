@@ -1,5 +1,6 @@
 import React from "react";
 import type { useGraphEngine } from "../useGraphEngine";
+import { holdConversation } from "../geminiApi";
 
 type GraphEngineProps = ReturnType<typeof useGraphEngine>;
 
@@ -27,10 +28,18 @@ export const InputSection = ({
 }: InputSectionProps) => {
   const [message, setMessage] = React.useState<string>("");
 
-  const detectCommand = (message: string) => {
+  const detectCommand = async (message: string) => {
     if (!message.startsWith("/")) {
       console.log(`adding message "${message}"`);
+      const historicalCommits = getHistory();
       addMessage(message);
+      historicalCommits.push({ role: "user", text: message });
+      try {
+        const response = await holdConversation(historicalCommits);
+        if (response) addMessage(response, "model");
+      } catch (error) {
+        console.error("Gemini API error: ", error);
+      }
       return false;
     }
 

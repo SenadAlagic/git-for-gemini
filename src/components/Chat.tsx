@@ -1,7 +1,8 @@
+import type { GeminiMessage } from "../useGraphEngine";
 import { ChatBubble } from "./ChatBubble";
 
 export type ChatProps = {
-  messages: string[];
+  messages: GeminiMessage[];
 };
 
 export const Chat = ({ messages }: ChatProps) => {
@@ -18,7 +19,7 @@ export const Chat = ({ messages }: ChatProps) => {
         style={{ display: "flex", flex: 1, flexDirection: "column", gap: 12 }}
       >
         {messages.map((message) => (
-          <ChatBubble key={message} text={message} />
+          <ChatBubble key={message.text} message={message} />
         ))}
       </div>
     </div>

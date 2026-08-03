@@ -2,6 +2,7 @@ import { ConversationList } from "./components/ConversationList";
 import { InputSection } from "./components/InputSection";
 import { Chat } from "./components";
 import { useGraphEngine } from "./useGraphEngine";
+import React from "react";
 
 function App() {
   const {
@@ -18,6 +19,11 @@ function App() {
   } = useGraphEngine();
 
   const currentMessages = getHistory();
+
+  React.useEffect(() => {
+    console.log(currentMessages);
+  }, [currentMessages]);
+
   return (
     <div style={{ display: "flex", flex: 1, height: "100%", width: "100%" }}>
       <ConversationList

@@ -1,22 +1,22 @@
+import type { GeminiMessage } from "../useGraphEngine";
+
 export type ChatBubbleProps = {
-  text: string;
-  // type: "primary" | "secondary";
+  message: GeminiMessage;
 };
-export const ChatBubble = ({ text }: ChatBubbleProps) => {
+
+export const ChatBubble = ({ message }: ChatBubbleProps) => {
   return (
     <div
       style={{
-        // backgroundColor: type === "primary" ? "#1677FF" : "#f0f0f0",
-        backgroundColor: "#1677FF",
+        backgroundColor: message.role === "model" ? "#1677FF" : "#f0f0f0",
         padding: 8,
         borderRadius: 4,
         boxSizing: "border-box",
         maxWidth: 300,
-        // alignSelf: type === "primary" ? "" : "flex-end",
-        alignSelf: "flex-end",
+        alignSelf: message.role === "model" ? "" : "flex-end",
       }}
     >
-      {text}
+      {message.text}
     </div>
   );
 };
