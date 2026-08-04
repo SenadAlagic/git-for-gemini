@@ -12,8 +12,9 @@ export const ChatBubble = ({ message }: ChatBubbleProps) => {
         padding: 8,
         borderRadius: 4,
         boxSizing: "border-box",
-        maxWidth: 300,
-        alignSelf: message.role === "model" ? "" : "flex-end",
+        width: "fit-content",
+        maxWidth: 700,
+        alignSelf: message.role === "model" ? "flex-start" : "flex-end",
       }}
     >
       {message.text}

@@ -1,4 +1,5 @@
 import React from "react";
+import { holdConversation } from "./geminiApi";
 
 export type Conversation = {
   id: string;
@@ -34,6 +35,7 @@ export const useGraphEngine = () => {
   const [activeConversationId, setActiveConversationId] =
     React.useState<string>("");
   const [activeBranchId, setActiveBranchId] = React.useState<string>("");
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const headCommitRef = React.useRef<string | undefined>(undefined);
 
   React.useEffect(() => {
@@ -167,14 +169,28 @@ export const useGraphEngine = () => {
     return messageArray.reverse();
   };
 
+  const sendMessage = async (messages: GeminiMessage[]) => {
+    try {
+      setIsLoading(true);
+      const response = await holdConversation(messages);
+      if (response) addMessage(response, "model");
+    } catch (error) {
+      console.error("Gemini API error: ", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     addConversation,
     addBranch,
     checkoutBranch,
     checkoutConversation,
     addMessage,
+    sendMessage,
     getHistory,
     conversations,
+    isLoading,
     activeConversationId,
     activeBranchId,
     branches,

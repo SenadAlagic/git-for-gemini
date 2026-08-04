@@ -2,7 +2,6 @@ import { ConversationList } from "./components/ConversationList";
 import { InputSection } from "./components/InputSection";
 import { Chat } from "./components";
 import { useGraphEngine } from "./useGraphEngine";
-import React from "react";
 
 function App() {
   const {
@@ -10,6 +9,8 @@ function App() {
     branches,
     activeBranchId,
     activeConversationId,
+    isLoading,
+    sendMessage,
     addConversation,
     addBranch,
     addMessage,
@@ -20,12 +21,16 @@ function App() {
 
   const currentMessages = getHistory();
 
-  React.useEffect(() => {
-    console.log(currentMessages);
-  }, [currentMessages]);
-
   return (
-    <div style={{ display: "flex", flex: 1, height: "100%", width: "100%" }}>
+    <div
+      style={{
+        display: "flex",
+        flex: 1,
+        height: "100vh",
+        width: "100%",
+        overflow: "hidden",
+      }}
+    >
       <ConversationList
         conversations={conversations}
         branches={branches}
@@ -34,14 +39,15 @@ function App() {
         checkoutBranch={checkoutBranch}
         checkoutConversation={checkoutConversation}
       />
-      <div style={{ display: "flex", flexDirection: "column", flex: 2 }}>
-        <Chat messages={currentMessages} />
+      <div style={{ display: "flex", flexDirection: "column", flex: 5 }}>
+        <Chat messages={currentMessages} isLoading={isLoading} />
         <InputSection
           addConversation={addConversation}
           addBranch={addBranch}
           addMessage={addMessage}
           checkoutBranch={checkoutBranch}
           getHistory={getHistory}
+          sendMessage={sendMessage}
           activeConversationId={activeConversationId}
           activeBranchId={activeBranchId}
           branches={branches}
