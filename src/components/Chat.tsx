@@ -9,6 +9,7 @@ export type ChatProps = {
 
 export const Chat = ({ messages, isLoading }: ChatProps) => {
   const scrollRef = React.useRef<HTMLDivElement>(null);
+  const prevScrollHeightRef = React.useRef<number>(0);
 
   React.useEffect(() => {
     const {
@@ -16,10 +17,13 @@ export const Chat = ({ messages, isLoading }: ChatProps) => {
       scrollHeight = 0,
       clientHeight = 0,
     } = scrollRef.current || {};
-    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+    const prevScollHeight = prevScrollHeightRef.current ?? scrollHeight;
+    const distanceFromBottom = prevScollHeight - scrollTop - clientHeight;
     if (distanceFromBottom < 150) {
       scrollRef.current?.scrollTo({ top: scrollHeight, behavior: "smooth" });
     }
+    prevScrollHeightRef.current = scrollHeight;
   }, [messages, scrollRef]);
 
   return (
