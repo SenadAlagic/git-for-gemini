@@ -61,12 +61,9 @@ export const InputSection = () => {
   };
 
   return (
-    <div style={{ display: "flex" }}>
+    <div className={cn("flex m-4")}>
       <form
-        style={{
-          display: "flex",
-          flex: 1,
-        }}
+        className={cn("flex flex-1 justify-center items-center")}
         onSubmit={(e) => {
           if (isLoading) return;
           e.preventDefault();
@@ -74,7 +71,11 @@ export const InputSection = () => {
           setMessage("");
         }}
       >
-        <InputGroup className={cn("border-t border-border p-2 m-3 rounded-lg")}>
+        <InputGroup
+          className={cn(
+            "border-t border-border p-2 m-3 rounded-lg max-w-3xl h-12",
+          )}
+        >
           <InputGroupInput
             placeholder="Type your message"
             value={message}
@@ -82,7 +83,18 @@ export const InputSection = () => {
             onChange={onChange}
           />
           <InputGroupAddon align="inline-end">
-            <SendHorizonal />
+            <button
+              type="submit"
+              className={cn(
+                "flex items-center justify-center",
+                "h-8 w-8 rounded-full",
+                "text-muted-foreground transition-colors",
+                "hover:text-foreground hover:bg-accent",
+                "active:scale-95",
+              )}
+            >
+              <SendHorizonal className="h-4 w-4" />
+            </button>
           </InputGroupAddon>
         </InputGroup>
       </form>
