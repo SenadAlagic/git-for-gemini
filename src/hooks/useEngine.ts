@@ -1,5 +1,5 @@
 import React from "react";
-import { holdConversation } from "./geminiApi";
+import { holdConversation } from "../geminiApi";
 
 export type Conversation = {
   id: string;
@@ -26,7 +26,7 @@ export type GeminiMessage = {
   role: "user" | "model";
 };
 
-export const useGraphEngine = () => {
+export const useEngine = () => {
   const [conversations, setConversations] = React.useState<
     Record<string, Conversation>
   >({});
@@ -36,6 +36,7 @@ export const useGraphEngine = () => {
     React.useState<string>("");
   const [activeBranchId, setActiveBranchId] = React.useState<string>("");
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
+  const [error, setError] = React.useState<string | null>(null);
   const headCommitRef = React.useRef<string | undefined>(undefined);
 
   React.useEffect(() => {
@@ -55,7 +56,6 @@ export const useGraphEngine = () => {
     });
     setActiveConversationId(conversationId);
   };
-
   const addBranch = (
     name: string,
     conversationId: string,
@@ -171,10 +171,12 @@ export const useGraphEngine = () => {
 
   const sendMessage = async (messages: GeminiMessage[]) => {
     try {
+      setError(null);
       setIsLoading(true);
       const response = await holdConversation(messages);
       if (response) addMessage(response, "model");
     } catch (error) {
+      setError(String(error));
       console.error("Gemini API error: ", error);
     } finally {
       setIsLoading(false);
@@ -195,5 +197,6 @@ export const useGraphEngine = () => {
     activeBranchId,
     branches,
     messages,
+    error,
   };
 };
