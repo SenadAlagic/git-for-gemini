@@ -1,26 +1,6 @@
-import { ConversationList } from "./components/ConversationList";
-import { InputSection } from "./components/InputSection";
-import { Chat } from "./components";
-import { useGraphEngine } from "./useGraphEngine";
+import { Chat, AppSidebar, InputSection } from "@/components";
 
 function App() {
-  const {
-    conversations,
-    branches,
-    activeBranchId,
-    activeConversationId,
-    isLoading,
-    sendMessage,
-    addConversation,
-    addBranch,
-    addMessage,
-    checkoutBranch,
-    checkoutConversation,
-    getHistory,
-  } = useGraphEngine();
-
-  const currentMessages = getHistory();
-
   return (
     <div
       style={{
@@ -31,27 +11,10 @@ function App() {
         overflow: "hidden",
       }}
     >
-      <ConversationList
-        conversations={conversations}
-        branches={branches}
-        activeBranchId={activeBranchId}
-        activeConversationId={activeConversationId}
-        checkoutBranch={checkoutBranch}
-        checkoutConversation={checkoutConversation}
-      />
+      <AppSidebar />
       <div style={{ display: "flex", flexDirection: "column", flex: 5 }}>
-        <Chat messages={currentMessages} isLoading={isLoading} />
-        <InputSection
-          addConversation={addConversation}
-          addBranch={addBranch}
-          addMessage={addMessage}
-          checkoutBranch={checkoutBranch}
-          getHistory={getHistory}
-          sendMessage={sendMessage}
-          activeConversationId={activeConversationId}
-          activeBranchId={activeBranchId}
-          branches={branches}
-        />
+        <Chat />
+        <InputSection />
       </div>
     </div>
   );
