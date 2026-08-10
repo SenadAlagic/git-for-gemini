@@ -1,12 +1,16 @@
+import React from "react";
 import {
   ClipboardList,
   HelpCircle,
   LayoutDashboard,
-  SquarePen,
+  Pencil,
   Settings,
+  SquarePen,
+  Trash2,
 } from "lucide-react";
 
 import {
+  Input,
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -14,6 +18,7 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
@@ -118,6 +123,8 @@ type SidebarSectionProps = {
   items: Record<string, Branch | Conversation>;
   activeId: string;
   onClick: (itemId: Branch | Conversation) => void;
+  onRename: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
 };
 
 const SidebarSection = ({
@@ -125,22 +132,97 @@ const SidebarSection = ({
   items,
   activeId,
   onClick,
+  onRename,
+  onDelete,
 }: SidebarSectionProps) => {
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [draftName, setDraftName] = React.useState("");
+  const [renameError, setRenameError] = React.useState<string | null>(null);
+
+  const startEditing = (id: string, currentName: string) => {
+    setEditingId(id);
+    setDraftName(currentName);
+    setRenameError(null);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setRenameError(null);
+  };
+
+  const commitRename = (id: string) => {
+    if (draftName.trim() === items[id]?.name) {
+      cancelEditing();
+      return;
+    }
+    try {
+      onRename(id, draftName);
+      cancelEditing();
+    } catch (err) {
+      setRenameError(err instanceof Error ? err.message : "Couldn't rename");
+    }
+  };
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          {Object.entries(items).map(([id, item]) => (
-            <SidebarMenuItem key={id}>
-              <SidebarMenuButton
-                isActive={activeId === id}
-                onClick={() => onClick(item)}
+          {Object.entries(items).map(([id, item]) =>
+            editingId === id ? (
+              <SidebarMenuItem
+                key={id}
+                className="flex flex-col gap-1 px-2 py-1"
               >
-                {item.name}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+                <Input
+                  autoFocus
+                  value={draftName}
+                  onChange={(e) => setDraftName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename(id);
+                    if (e.key === "Escape") cancelEditing();
+                  }}
+                  onBlur={() => commitRename(id)}
+                  className="h-7"
+                />
+                {renameError && (
+                  <span className="px-0.5 text-xs text-destructive">
+                    {renameError}
+                  </span>
+                )}
+              </SidebarMenuItem>
+            ) : (
+              <SidebarMenuItem key={id} className={cn("overflow-hidden")}>
+                <SidebarMenuButton
+                  isActive={activeId === id}
+                  onClick={() => onClick(item)}
+                >
+                  <span className="truncate">{item.name}</span>
+                </SidebarMenuButton>
+                <SidebarMenuAction
+                  showOnHover
+                  className="right-8"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    startEditing(id, item.name);
+                  }}
+                >
+                  <Pencil />
+                  <span className="sr-only">Rename</span>
+                </SidebarMenuAction>
+                <SidebarMenuAction
+                  showOnHover
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(id);
+                  }}
+                >
+                  <Trash2 />
+                  <span className="sr-only">Delete</span>
+                </SidebarMenuAction>
+              </SidebarMenuItem>
+            ),
+          )}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
@@ -158,7 +240,43 @@ export const AppSidebar = ({
     checkoutBranch,
     checkoutConversation,
     addConversation,
+    renameConversation,
+    renameBranch,
+    deleteConversation,
+    deleteBranch,
   } = useEngineContext();
+
+  const branchesForActiveConversation = activeConversationId
+    ? Object.fromEntries(
+        Object.entries(branches).filter(
+          ([, branch]) => branch.conversationId === activeConversationId,
+        ),
+      )
+    : {};
+
+  const handleDeleteConversation = (id: string) => {
+    const conversation = conversations[id];
+    if (!conversation) return;
+    const confirmed = window.confirm(
+      `Delete "${conversation.name}" and all of its branches? This can't be undone.`,
+    );
+    if (!confirmed) return;
+    deleteConversation(id);
+  };
+
+  const handleDeleteBranch = (id: string) => {
+    const branch = branches[id];
+    if (!branch) return;
+    const confirmed = window.confirm(`Delete branch "${branch.name}"?`);
+    if (!confirmed) return;
+    try {
+      deleteBranch(id);
+    } catch (err) {
+      window.alert(
+        err instanceof Error ? err.message : "Couldn't delete branch",
+      );
+    }
+  };
 
   return (
     <Sidebar {...props}>
@@ -182,12 +300,16 @@ export const AppSidebar = ({
           items={conversations}
           activeId={activeConversationId}
           onClick={(item) => checkoutConversation(item.id)}
+          onRename={renameConversation}
+          onDelete={handleDeleteConversation}
         />
         <SidebarSection
           label="Branches"
-          items={branches}
+          items={branchesForActiveConversation}
           activeId={activeBranchId}
           onClick={(item) => checkoutBranch(item.name)}
+          onRename={renameBranch}
+          onDelete={handleDeleteBranch}
         />
       </SidebarContent>
       {/* <SidebarFooter>

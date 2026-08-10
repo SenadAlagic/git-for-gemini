@@ -6,11 +6,13 @@ import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui";
 
 export const InputSection = () => {
   const [message, setMessage] = React.useState<string>("");
+  const inputRef = React.useRef<HTMLInputElement>(null);
 
   const {
     addConversation,
     addBranch,
     checkoutBranch,
+    renameConversation,
     addMessage,
     getHistory,
     sendMessage,
@@ -18,27 +20,48 @@ export const InputSection = () => {
     activeBranchId,
     branches,
     isLoading,
+    registerInputFocus,
   } = useEngineContext();
+
+  React.useEffect(() => {
+    registerInputFocus(() => {
+      inputRef.current?.focus();
+    });
+  }, [registerInputFocus]);
 
   const detectCommand = async (message: string) => {
     if (!message.startsWith("/")) {
+      let conversationId = activeConversationId;
       let branchId = activeBranchId;
       let messageHistory = getHistory();
 
-      // No conversation yet (fresh app, or user hasn't started one) - spin
-      // one up on the fly instead of throwing. addConversation/addBranch
-      // return the ids synchronously, so we use those directly rather than
-      // activeConversationId/activeBranchId, which won't reflect this yet.
-      if (!activeConversationId || !branchId) {
-        const title =
-          message.length > 40 ? `${message.slice(0, 40)}…` : message;
-        const { branch } = addConversation(title);
+      // No conversation yet (fresh app, "New chat" button pressed, or user
+      // hasn't started one) - spin one up on the fly instead of throwing.
+      // addConversation/addBranch return the ids synchronously, so we use
+      // those directly rather than activeConversationId/activeBranchId,
+      // which won't reflect this yet.
+      if (!conversationId || !branchId) {
+        const { conversation, branch } = addConversation("New conversation");
+        conversationId = conversation.id;
         branchId = branch.id;
         messageHistory = [];
       }
 
+      // Auto-title: the first message of a conversation becomes its name,
+      // whether the conversation was just bootstrapped above or already
+      // existed (e.g. created via the sidebar's "New chat" button) but
+      // hasn't had anything sent to it yet.
+      const isFirstMessage = messageHistory.length === 0;
+
       console.log(`adding message "${message}"`);
       addMessage(message, "user", branchId);
+
+      if (isFirstMessage) {
+        const title =
+          message.length > 40 ? `${message.slice(0, 40)}…` : message;
+        renameConversation(conversationId, title);
+      }
+
       messageHistory.push({ role: "user", text: message });
       await sendMessage(messageHistory, branchId);
       return false;
@@ -91,6 +114,7 @@ export const InputSection = () => {
           )}
         >
           <InputGroupInput
+            ref={inputRef}
             placeholder="Type your message"
             value={message}
             disabled={isLoading}
