@@ -22,11 +22,25 @@ export const InputSection = () => {
 
   const detectCommand = async (message: string) => {
     if (!message.startsWith("/")) {
+      let branchId = activeBranchId;
+      let messageHistory = getHistory();
+
+      // No conversation yet (fresh app, or user hasn't started one) - spin
+      // one up on the fly instead of throwing. addConversation/addBranch
+      // return the ids synchronously, so we use those directly rather than
+      // activeConversationId/activeBranchId, which won't reflect this yet.
+      if (!activeConversationId || !branchId) {
+        const title =
+          message.length > 40 ? `${message.slice(0, 40)}…` : message;
+        const { branch } = addConversation(title);
+        branchId = branch.id;
+        messageHistory = [];
+      }
+
       console.log(`adding message "${message}"`);
-      const messageHistory = getHistory();
-      addMessage(message);
+      addMessage(message, "user", branchId);
       messageHistory.push({ role: "user", text: message });
-      await sendMessage(messageHistory);
+      await sendMessage(messageHistory, branchId);
       return false;
     }
 

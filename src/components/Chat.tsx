@@ -2,6 +2,7 @@ import React from "react";
 import { useEngineContext } from "@/context/EngineContext";
 import { Spinner, Bubble, BubbleContent } from "@/components/ui";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import { AlertCircle } from "lucide-react";
 
 export const Chat = () => {
@@ -43,13 +44,20 @@ export const Chat = () => {
           gap: 12,
         }}
       >
+        {messages.length === 0 && !isLoading && !error && (
+          <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
+            Send a message to get started.
+          </div>
+        )}
         {messages.map((message) => (
           <Bubble
             key={message.text}
             align={message.role === "model" ? "start" : "end"}
             variant={message.role === "model" ? "secondary" : "default"}
           >
-            <BubbleContent>{message.text}</BubbleContent>
+            <BubbleContent>
+              <MarkdownContent>{message.text}</MarkdownContent>
+            </BubbleContent>
           </Bubble>
         ))}
         {isLoading && <Spinner className="size-4" />}

@@ -1,5 +1,6 @@
 import React from "react";
 import { holdConversation } from "../geminiApi";
+import { loadPersistedState, savePersistedState } from "@/lib/persistence";
 
 export type Conversation = {
   id: string;
@@ -27,35 +28,68 @@ export type GeminiMessage = {
 };
 
 export const useEngine = () => {
+  const initialState = React.useRef(loadPersistedState()).current;
+
   const [conversations, setConversations] = React.useState<
     Record<string, Conversation>
-  >({});
-  const [branches, setBranches] = React.useState<Record<string, Branch>>({});
-  const [messages, setMessages] = React.useState<Record<string, Commit>>({});
-  const [activeConversationId, setActiveConversationId] =
-    React.useState<string>("");
-  const [activeBranchId, setActiveBranchId] = React.useState<string>("");
+  >(initialState.conversations);
+  const [branches, setBranches] = React.useState<Record<string, Branch>>(
+    initialState.branches,
+  );
+  const [messages, setMessages] = React.useState<Record<string, Commit>>(
+    initialState.messages,
+  );
+  const [activeConversationId, setActiveConversationId] = React.useState<string>(
+    initialState.activeConversationId,
+  );
+  const [activeBranchId, setActiveBranchId] = React.useState<string>(
+    initialState.activeBranchId,
+  );
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
-  const headCommitRef = React.useRef<string | undefined>(undefined);
+
+  // Authoritative, synchronous view of each branch's head commit. React state
+  // updates (even functional ones queued in the same tick) aren't readable
+  // back out until the next render, so anything that needs to know "what did
+  // I just create" in the same synchronous block of code reads/writes this
+  // ref instead of `branches`.
+  const branchHeadsRef = React.useRef<Record<string, string | undefined>>(
+    Object.fromEntries(
+      Object.entries(initialState.branches).map(([id, branch]) => [
+        id,
+        branch.head,
+      ]),
+    ),
+  );
 
   React.useEffect(() => {
-    const currentBranch = branches[activeBranchId];
-    headCommitRef.current = currentBranch?.head;
-  }, [activeBranchId, branches]);
+    savePersistedState({
+      conversations,
+      branches,
+      messages,
+      activeConversationId,
+      activeBranchId,
+    });
+  }, [conversations, branches, messages, activeConversationId, activeBranchId]);
 
   const addConversation = (name: string) => {
     const conversationId = crypto.randomUUID();
     const branch = addBranch("main", conversationId);
+    const conversation: Conversation = {
+      id: conversationId,
+      name,
+      branch: branch.id,
+    };
 
-    setConversations((prevConversations) => {
-      return {
-        ...prevConversations,
-        [conversationId]: { id: conversationId, name, branch: branch.id },
-      };
-    });
+    setConversations((prevConversations) => ({
+      ...prevConversations,
+      [conversationId]: conversation,
+    }));
     setActiveConversationId(conversationId);
+
+    return { conversation, branch };
   };
+
   const addBranch = (
     name: string,
     conversationId: string,
@@ -74,6 +108,8 @@ export const useEngine = () => {
       name,
       head: parentId,
     };
+    branchHeadsRef.current[branch.id] = parentId;
+
     setBranches((prevBranches) => {
       return { ...prevBranches, [branch.id]: branch };
     });
@@ -81,31 +117,42 @@ export const useEngine = () => {
     return branch;
   };
 
-  const addMessage = (text: string, role: "user" | "model" = "user") => {
-    const currentBranch = branches[activeBranchId];
-    if (!currentBranch) throw new Error("No active branch");
+  // branchId defaults to the currently active branch, but callers that just
+  // created a conversation/branch in the same synchronous block should pass
+  // the id explicitly - `activeBranchId` won't reflect that yet.
+  const addMessage = (
+    text: string,
+    role: "user" | "model" = "user",
+    branchId: string = activeBranchId,
+  ) => {
+    if (!branchId) throw new Error("No active branch");
 
     const commitId = crypto.randomUUID();
-    const parentId = headCommitRef.current;
+    const parentId = branchHeadsRef.current[branchId];
     const commit: Commit = {
       id: commitId,
       text,
       parent: parentId,
       role,
     };
+    branchHeadsRef.current[branchId] = commitId;
+
     setMessages((prevMessages) => {
       return { ...prevMessages, [commit.id]: commit };
     });
     setBranches((prevBranches) => {
+      const currentBranch = prevBranches[branchId];
+      if (!currentBranch) return prevBranches;
       return {
         ...prevBranches,
-        [activeBranchId]: {
+        [branchId]: {
           ...currentBranch,
           head: commit.id,
         },
       };
     });
-    headCommitRef.current = commitId;
+
+    return commit;
   };
 
   const getCurrentBranch = () => {
@@ -169,12 +216,17 @@ export const useEngine = () => {
     return messageArray.reverse();
   };
 
-  const sendMessage = async (messages: GeminiMessage[]) => {
+  // branchId mirrors addMessage's override: pass explicitly when the target
+  // branch was just created in the same synchronous block as this call.
+  const sendMessage = async (
+    messages: GeminiMessage[],
+    branchId: string = activeBranchId,
+  ) => {
     try {
       setError(null);
       setIsLoading(true);
       const response = await holdConversation(messages);
-      if (response) addMessage(response, "model");
+      if (response) addMessage(response, "model", branchId);
     } catch (error) {
       setError(String(error));
       console.error("Gemini API error: ", error);

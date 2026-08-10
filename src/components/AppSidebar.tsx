@@ -2,6 +2,7 @@ import {
   ClipboardList,
   HelpCircle,
   LayoutDashboard,
+  SquarePen,
   Settings,
 } from "lucide-react";
 
@@ -17,6 +18,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui";
+import { Button } from "@/components/ui/Button";
 import { useEngineContext } from "@/context/EngineContext";
 import type { Branch, Conversation } from "@/hooks/useEngine";
 import { ModeToggle } from "@/components/ui/ModeToggle";
@@ -155,6 +157,7 @@ export const AppSidebar = ({
     activeBranchId,
     checkoutBranch,
     checkoutConversation,
+    addConversation,
   } = useEngineContext();
 
   return (
@@ -163,6 +166,16 @@ export const AppSidebar = ({
         <SidebarLogo logo={sidebarData.logo} />
         <ModeToggle />
       </SidebarHeader>
+      <div className="px-2">
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2"
+          onClick={() => addConversation("New conversation")}
+        >
+          <SquarePen />
+          New chat
+        </Button>
+      </div>
       <SidebarContent>
         <SidebarSection
           label="Conversations"
