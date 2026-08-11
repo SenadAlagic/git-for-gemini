@@ -2,11 +2,15 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { SendHorizonal } from "lucide-react";
 import { useEngineContext } from "@/context/EngineContext";
-import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupTextarea,
+} from "@/components/ui";
 
 export const InputSection = () => {
   const [message, setMessage] = React.useState<string>("");
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
   const {
     addConversation,
@@ -35,11 +39,6 @@ export const InputSection = () => {
       let branchId = activeBranchId;
       let messageHistory = getHistory();
 
-      // No conversation yet (fresh app, "New chat" button pressed, or user
-      // hasn't started one) - spin one up on the fly instead of throwing.
-      // addConversation/addBranch return the ids synchronously, so we use
-      // those directly rather than activeConversationId/activeBranchId,
-      // which won't reflect this yet.
       if (!conversationId || !branchId) {
         const { conversation, branch } = addConversation("New conversation");
         conversationId = conversation.id;
@@ -47,10 +46,6 @@ export const InputSection = () => {
         messageHistory = [];
       }
 
-      // Auto-title: the first message of a conversation becomes its name,
-      // whether the conversation was just bootstrapped above or already
-      // existed (e.g. created via the sidebar's "New chat" button) but
-      // hasn't had anything sent to it yet.
       const isFirstMessage = messageHistory.length === 0;
 
       console.log(`adding message "${message}"`);
@@ -93,7 +88,7 @@ export const InputSection = () => {
     }
   };
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
   };
 
@@ -110,10 +105,10 @@ export const InputSection = () => {
       >
         <InputGroup
           className={cn(
-            "border-t border-border p-2 m-3 rounded-lg max-w-3xl h-12",
+            "border-t border-border p-2 m-3 rounded-lg max-w-3xl min-h-12 max-h-32",
           )}
         >
-          <InputGroupInput
+          <InputGroupTextarea
             ref={inputRef}
             placeholder="Type your message"
             value={message}

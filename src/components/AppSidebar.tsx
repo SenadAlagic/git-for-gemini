@@ -197,7 +197,7 @@ const SidebarSection = ({
                   isActive={activeId === id}
                   onClick={() => onClick(item)}
                 >
-                  <span className="truncate">{item.name}</span>
+                  <span className="truncate w-[85%]">{item.name}</span>
                 </SidebarMenuButton>
                 <SidebarMenuAction
                   showOnHover
