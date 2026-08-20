@@ -2,15 +2,21 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { SendHorizonal } from "lucide-react";
 import { useEngineContext } from "@/context/EngineContext";
-import { InputGroup, InputGroupInput, InputGroupAddon } from "@/components/ui";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupTextarea,
+} from "@/components/ui";
 
 export const InputSection = () => {
   const [message, setMessage] = React.useState<string>("");
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
   const {
     addConversation,
     addBranch,
     checkoutBranch,
+    renameConversation,
     addMessage,
     getHistory,
     sendMessage,
@@ -18,27 +24,39 @@ export const InputSection = () => {
     activeBranchId,
     branches,
     isLoading,
+    registerInputFocus,
   } = useEngineContext();
+
+  React.useEffect(() => {
+    registerInputFocus(() => {
+      inputRef.current?.focus();
+    });
+  }, [registerInputFocus]);
 
   const detectCommand = async (message: string) => {
     if (!message.startsWith("/")) {
+      let conversationId = activeConversationId;
       let branchId = activeBranchId;
       let messageHistory = getHistory();
 
-      // No conversation yet (fresh app, or user hasn't started one) - spin
-      // one up on the fly instead of throwing. addConversation/addBranch
-      // return the ids synchronously, so we use those directly rather than
-      // activeConversationId/activeBranchId, which won't reflect this yet.
-      if (!activeConversationId || !branchId) {
-        const title =
-          message.length > 40 ? `${message.slice(0, 40)}…` : message;
-        const { branch } = addConversation(title);
+      if (!conversationId || !branchId) {
+        const { conversation, branch } = addConversation("New conversation");
+        conversationId = conversation.id;
         branchId = branch.id;
         messageHistory = [];
       }
 
+      const isFirstMessage = messageHistory.length === 0;
+
       console.log(`adding message "${message}"`);
       addMessage(message, "user", branchId);
+
+      if (isFirstMessage) {
+        const title =
+          message.length > 40 ? `${message.slice(0, 40)}…` : message;
+        renameConversation(conversationId, title);
+      }
+
       messageHistory.push({ role: "user", text: message });
       await sendMessage(messageHistory, branchId);
       return false;
@@ -70,7 +88,7 @@ export const InputSection = () => {
     }
   };
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMessage(e.target.value);
   };
 
@@ -87,10 +105,11 @@ export const InputSection = () => {
       >
         <InputGroup
           className={cn(
-            "border-t border-border p-2 m-3 rounded-lg max-w-3xl h-12",
+            "border-t border-border p-2 m-3 rounded-lg max-w-3xl min-h-12 max-h-32",
           )}
         >
-          <InputGroupInput
+          <InputGroupTextarea
+            ref={inputRef}
             placeholder="Type your message"
             value={message}
             disabled={isLoading}

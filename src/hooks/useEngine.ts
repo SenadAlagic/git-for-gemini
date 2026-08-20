@@ -39,14 +39,14 @@ export const useEngine = () => {
   const [messages, setMessages] = React.useState<Record<string, Commit>>(
     initialState.messages,
   );
-  const [activeConversationId, setActiveConversationId] = React.useState<string>(
-    initialState.activeConversationId,
-  );
+  const [activeConversationId, setActiveConversationId] =
+    React.useState<string>(initialState.activeConversationId);
   const [activeBranchId, setActiveBranchId] = React.useState<string>(
     initialState.activeBranchId,
   );
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
+  const inputFocusHandlerRef = React.useRef<(() => void) | null>(null);
 
   // Authoritative, synchronous view of each branch's head commit. React state
   // updates (even functional ones queued in the same tick) aren't readable
@@ -86,6 +86,7 @@ export const useEngine = () => {
       [conversationId]: conversation,
     }));
     setActiveConversationId(conversationId);
+    inputFocusHandlerRef.current?.();
 
     return { conversation, branch };
   };
@@ -155,6 +156,10 @@ export const useEngine = () => {
     return commit;
   };
 
+  const registerInputFocus = React.useCallback((focusHandler: () => void) => {
+    inputFocusHandlerRef.current = focusHandler;
+  }, []);
+
   const getCurrentBranch = () => {
     if (!activeBranchId) {
       return undefined;
@@ -194,6 +199,142 @@ export const useEngine = () => {
     }
     setActiveConversationId(id);
     setActiveBranchId(conversation.branch);
+  };
+
+  const renameConversation = (conversationId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error("Name can't be empty");
+
+    setConversations((prevConversations) => {
+      if (!prevConversations[conversationId]) return prevConversations;
+      return {
+        ...prevConversations,
+        [conversationId]: {
+          ...prevConversations[conversationId],
+          name: trimmed,
+        },
+      };
+    });
+  };
+
+  const renameBranch = (branchId: string, name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error("Name can't be empty");
+
+    const branch = branches[branchId];
+    if (!branch) return;
+
+    const conflict = Object.values(branches).some(
+      (b) =>
+        b.id !== branchId &&
+        b.conversationId === branch.conversationId &&
+        b.name === trimmed,
+    );
+    if (conflict) {
+      throw new Error(
+        `Branch '${trimmed}' already exists in this conversation`,
+      );
+    }
+
+    setBranches((prevBranches) => {
+      if (!prevBranches[branchId]) return prevBranches;
+      return {
+        ...prevBranches,
+        [branchId]: { ...prevBranches[branchId], name: trimmed },
+      };
+    });
+  };
+
+  // Removes only the branch pointer, matching git's own model: any commits
+  // it referenced stay around (they may still be reachable from a sibling
+  // branch that forked off the same history) and are never deleted here.
+  const deleteBranch = (branchId: string) => {
+    const branch = branches[branchId];
+    if (!branch) return;
+
+    const siblingBranches = Object.values(branches).filter(
+      (b) => b.conversationId === branch.conversationId && b.id !== branchId,
+    );
+
+    if (siblingBranches.length === 0) {
+      throw new Error(
+        "Can't delete the only branch in a conversation - delete the conversation instead.",
+      );
+    }
+
+    setBranches((prevBranches) => {
+      const nextBranches = { ...prevBranches };
+      delete nextBranches[branchId];
+      return nextBranches;
+    });
+    delete branchHeadsRef.current[branchId];
+
+    if (activeBranchId === branchId) {
+      const fallback = siblingBranches[0];
+      setActiveBranchId(fallback.id);
+      setConversations((prevConversations) => ({
+        ...prevConversations,
+        [branch.conversationId]: {
+          ...prevConversations[branch.conversationId],
+          branch: fallback.id,
+        },
+      }));
+    }
+  };
+
+  // Unlike deleteBranch, this removes every branch in the conversation at
+  // once, which means none of their commits can ever be reachable again -
+  // commits are never shared across conversations, so it's safe to clean
+  // them up here rather than leaving them orphaned in storage forever.
+  const deleteConversation = (conversationId: string) => {
+    const conversation = conversations[conversationId];
+    if (!conversation) return;
+
+    const conversationBranches = Object.values(branches).filter(
+      (b) => b.conversationId === conversationId,
+    );
+
+    const commitIdsToDelete = new Set<string>();
+    for (const branch of conversationBranches) {
+      let commitId = branch.head;
+      while (commitId && !commitIdsToDelete.has(commitId)) {
+        commitIdsToDelete.add(commitId);
+        commitId = messages[commitId]?.parent;
+      }
+    }
+
+    setConversations((prevConversations) => {
+      const nextConversations = { ...prevConversations };
+      delete nextConversations[conversationId];
+      return nextConversations;
+    });
+    setBranches((prevBranches) => {
+      const nextBranches = { ...prevBranches };
+      for (const branch of conversationBranches) delete nextBranches[branch.id];
+      return nextBranches;
+    });
+    setMessages((prevMessages) => {
+      const nextMessages = { ...prevMessages };
+      for (const id of commitIdsToDelete) delete nextMessages[id];
+      return nextMessages;
+    });
+    for (const branch of conversationBranches) {
+      delete branchHeadsRef.current[branch.id];
+    }
+
+    if (activeConversationId === conversationId) {
+      const remaining = Object.values(conversations).filter(
+        (c) => c.id !== conversationId,
+      );
+      if (remaining.length > 0) {
+        const fallback = remaining[0];
+        setActiveConversationId(fallback.id);
+        setActiveBranchId(fallback.branch);
+      } else {
+        setActiveConversationId("");
+        setActiveBranchId("");
+      }
+    }
   };
 
   const getHistory = () => {
@@ -240,9 +381,14 @@ export const useEngine = () => {
     addBranch,
     checkoutBranch,
     checkoutConversation,
+    renameConversation,
+    renameBranch,
+    deleteBranch,
+    deleteConversation,
     addMessage,
     sendMessage,
     getHistory,
+    registerInputFocus,
     conversations,
     isLoading,
     activeConversationId,
